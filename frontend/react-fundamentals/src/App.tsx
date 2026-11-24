@@ -1,14 +1,26 @@
-import { useEffect, useState } from "react";
-import type { employees } from "./Types.ts";
+import { useEffect, useMemo, useState } from "react";
+import type { Employees } from "./Types.ts";
 
 function App() {
-  const [data, setData] = useState<employees[]>([]);
+  const [data, setData] = useState<Employees[]>([]);
   const [query, setQuery] = useState<string>("");
+  const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(
+    null,
+  );
 
-  const visibleEmployees = data.filter((employee) =>
-    employee.name.toLowerCase().includes(query.trim().toLowerCase()),
+  const visibleEmployees = useMemo(() => {
+    const normalizedQuery = debouncedQuery.trim().toLowerCase();
+
+    return data.filter((employee) =>
+      employee.name.toLowerCase().includes(normalizedQuery),
+    );
+  }, [data, debouncedQuery]);
+
+  const selectedEmployee = data.find(
+    (employee) => employee.id === selectedEmployeeId,
   );
 
   useEffect(() => {
@@ -43,6 +55,16 @@ function App() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [query]);
+
   if (loading) {
     return <p>Loading...</p>;
   }
@@ -69,9 +91,26 @@ function App() {
       ) : (
         <ul>
           {visibleEmployees.map((employee) => (
-            <li key={employee.id}>{employee.name}</li>
+            <li key={employee.id}>
+              <button
+                type="button"
+                aria-pressed={employee.id === selectedEmployeeId}
+                onClick={() => setSelectedEmployeeId(employee.id)}
+              >
+                {employee.name}
+              </button>
+            </li>
           ))}
         </ul>
+      )}
+      {selectedEmployee && (
+        <section aria-label="Selected employee">
+          <p>{selectedEmployee.name}</p>
+          <p>{selectedEmployee.email}</p>
+          <p>{selectedEmployee.role}</p>
+          <p>{selectedEmployee.department}</p>
+          <p>{selectedEmployee.company.name}</p>
+        </section>
       )}
     </main>
   );
